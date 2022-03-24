@@ -132,3 +132,5 @@ dmypy.json
 
 # exe files
 *.exe
+
+domains.json
