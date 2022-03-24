@@ -1,0 +1,11 @@
+{"domains":
+    [{
+        "domain": "firstdomain.com",
+        "subdomains": ["testeroni"]
+    },
+    {
+        "domain": "test.com",
+        "subdomains": ["testmctest", "supertest"]  
+    }
+    ]
+}
