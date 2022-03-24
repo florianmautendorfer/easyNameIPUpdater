@@ -1,8 +1,12 @@
+import json
+import api_helpers
 from os import getenv
+from sys import exit
 from time import sleep
 from requests import get
 from selenium import webdriver
 from dotenv import load_dotenv
+from jsonpath_ng import jsonpath, parse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote import webelement
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,11 +14,15 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.relative_locator import locate_with
 
-# load mail and password
+# load env file
 load_dotenv()
 
+# load domains from json
+with open("domains.json", "r") as read_file:
+    domains_to_change = json.load(read_file)
+
 # driver
-driver = webdriver.Chrome()
+#driver = webdriver.Chrome()
 
 # urls
 main_url = "https://www.easyname.at/"
@@ -42,11 +50,6 @@ sel_dns_button = ".entity__field>a[href*='dns']"
 
 # text
 text_dns_entry_edit = "DNS-Eintrag editieren"
-
-# domains
-domains_to_change = "sporetec.at"
-dns_entries_to_change = "testeroni"
-
 
 # helpers
 def get_element_by_data_testid(data_testid):
@@ -100,42 +103,64 @@ class DoesStillExistError(Exception):
 
 
 # code
-driver.get(main_url)
 
-# close cookie modal
-# wait_for_exists(driver.find_element_by_class_name("overlay--cookie-modal"))
-get_element_by_data_testid(tid_cookie).click()
-# wait_for_not_exists(driver.find_element_by_class_name("overlay--cookie-modal"))
+domains_from_API = api_helpers.get_domains()
+print("--------------------------------")
+change_list = parse("$..domain").find(domains_to_change)
+change_result = [match.value for match in change_list]
 
-# login
-wait_for_clickable(get_element_by_data_testid(tid_login_button)).click()
-driver.find_element(By.ID, id_email_field).send_keys(getenv("MAIL"))
-driver.find_element(By.ID, id_password_field).send_keys(getenv("PASSWORD"))
-get_element_by_data_testid(tid_confirm_login_button).click()
+for domain in domains_to_change["domains"]:
+    print("--------------------------------")
+    print(domain["domain"])
+    print("--------------------------------")
+    to_change_in_api = parse('$.data[*].domain').find(domains_from_API)
+    to_change_in_api_result = [match.value for match in to_change_in_api]
+    print(to_change_in_api_result)
 
-# sleep(5)
-wait_for_exists(driver.find_element(By.CLASS_NAME, "menu--user-id"))
-# open domain dns subpage
-domains = driver.find_elements(By.CLASS_NAME, class_domainnames)
-for domain in domains:
-    if domain.text == domains_to_change:
-        driver.find_element(locate_with(By.CSS_SELECTOR, sel_dns_button).to_right_of(domain)).click()
+    count = 0
+    for x in change_result:
+        if x in to_change_in_api_result:
+            count += 1
+    if count==0:
+        print("No Domain you want to change is actually owend by the account you entered.")
+        exit(1)
 
-# edit domain entry
-dns_entries = driver.find_elements(By.CSS_SELECTOR, sel_css_dns_record)
+# driver.get(main_url)
+
+# # close cookie modal
+# # wait_for_exists(driver.find_element_by_class_name("overlay--cookie-modal"))
+# get_element_by_data_testid(tid_cookie).click()
+# # wait_for_not_exists(driver.find_element_by_class_name("overlay--cookie-modal"))
+
+# # login
+# wait_for_clickable(get_element_by_data_testid(tid_login_button)).click()
+# driver.find_element(By.ID, id_email_field).send_keys(getenv("MAIL"))
+# driver.find_element(By.ID, id_password_field).send_keys(getenv("PASSWORD"))
+# get_element_by_data_testid(tid_confirm_login_button).click()
+
+# # sleep(5)
+# wait_for_exists(driver.find_element(By.CLASS_NAME, "menu--user-id"))
+# # open domain dns subpage
+# domains = driver.find_elements(By.CLASS_NAME, class_domainnames)
+# for domain in domains:
+#     if domain.text == domains_to_change:
+#         driver.find_element(locate_with(By.CSS_SELECTOR, sel_dns_button).to_right_of(domain)).click()
+
+# # edit domain entry
+# dns_entries = driver.find_elements(By.CSS_SELECTOR, sel_css_dns_record)
 
 
-for dns_entry in dns_entries:
-    if dns_entries_to_change in dns_entry.text:
-        driver.find_element(locate_with(By.CSS_SELECTOR, "[data-original-title*='edit']").to_right_of(dns_entry)).click()
-        break
+# for dns_entry in dns_entries:
+#     if dns_entries_to_change in dns_entry.text:
+#         driver.find_element(locate_with(By.CSS_SELECTOR, "[data-original-title*='edit']").to_right_of(dns_entry)).click()
+#         break
 
-# change ip
-ip = get('https://icanhazip.com/').content.decode('utf8')
-driver.find_element(By.CSS_SELECTOR, sel_css_ip_field).clear()
-driver.find_element(By.CSS_SELECTOR, sel_css_ip_field).send_keys(ip)
+# # change ip
+# ip = get('https://icanhazip.com/').content.decode('utf8')
+# driver.find_element(By.CSS_SELECTOR, sel_css_ip_field).clear()
+# driver.find_element(By.CSS_SELECTOR, sel_css_ip_field).send_keys(ip)
 
-# check save confirmation
-# wait_for_exists(class_success_message)
+# # check save confirmation
+# # wait_for_exists(class_success_message)
 
-driver.close()
+# driver.close()
